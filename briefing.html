@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morning Briefing - Portrait</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            /* Default Theme Variables (Midnight) */
+            --panel-bg: rgba(17, 24, 39, 0.85);
+            --accent-color: #93c5fd; /* blue-300 */
+            --accent-secondary: #facc15; /* yellow-400 */
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000000;
+            color: #ffffff;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
+        }
+
+        /* --- BACKGROUND LAYERS --- */
+        #bg-layer {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-size: cover; background-position: center;
+            z-index: -2; transition: opacity 1s ease-in-out; opacity: 0.85;
+            background-color: #111;
+        }
+        #bg-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.7));
+            z-index: -1;
+        }
+
+        /* --- CAROUSEL ANIMATIONS --- */
+        .carousel-container {
+            position: relative;
+            width: 100%;
+            perspective: 1000px;
+        }
+
+        .carousel-item {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 22.5%; width: 55%;
+            transition: transform 0.75s cubic-bezier(0.25, 0.8, 0.25, 1),
+                        opacity 1.2s ease-in-out;
+            background: var(--panel-bg); 
+            border: 1px solid var(--border-color);
+            border-radius: 1.5rem; 
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            backface-visibility: hidden;
+            contain: layout paint style;
+            will-change: transform, opacity;
+            padding: 0.75rem; 
+        }
+
+        /* --- INNER FRAME STYLE --- */
+        .inner-frame {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.25); 
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 1rem; 
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            padding: 1.5rem; 
+        }
+
+        /* Utility classes */
+        .text-accent { color: var(--accent-color); }
+        .text-secondary { color: var(--accent-secondary); }
+        .bg-accent-dim { background-color: var(--accent-color); opacity: 0.1; }
+        
+        /* New aggressive text shadow for the header */
+        .heavy-shadow {
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
+        }
+        
+        /* --- POSITIONS --- */
+        .pos-center { 
+            z-index: 30; opacity: 1; transform: translate3d(0, 0, 0) scale(1);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+        }
+        .pos-right { 
+            z-index: 20; opacity: 0.45; transform: translate3d(122%, 0, 0) scale(0.45);
+        }
+        .pos-left { 
+            z-index: 20; opacity: 0.45; transform: translate3d(-122%, 0, 0) scale(0.45);
+        }
+        .pos-hidden-right { z-index: 10; opacity: 0; transform: translate3d(150%, 0, 0) scale(0.4); }
+        .pos-hidden-left { z-index: 10; opacity: 0; transform: translate3d(-150%, 0, 0) scale(0.4); }
+        .pos-hidden { display: none; }
+
+        .pos-center .detail-view { display: block; animation: fadeIn 1s ease-in forwards; }
+        .pos-right .detail-view, .pos-left .detail-view, 
+        .pos-hidden-right .detail-view, .pos-hidden-left .detail-view { display: none; }
+        
+        /* Text Scaling */
+        .pos-center .main-text { font-size: 4.5rem; } 
+        .pos-right .main-text, .pos-left .main-text { font-size: 1.5rem; }
+
+        /* Vertical Header */
+        .v-carousel-container { height: 7rem; overflow: hidden; position: relative; }
+        .v-carousel-track { transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1); height: 100%; }
+        .v-slide { height: 7rem; display: flex; flex-direction: column; justify-content: center; }
+        .v-align-left { align-items: flex-start; }
+        .v-align-right { align-items: flex-end; }
+
+        /* Settings Modal */
+        #settings-modal { transition: opacity 0.3s ease-in-out; }
+        .hidden { display: none !important; opacity: 0; }
+        .themed-modal { background-color: #111827; border: 2px solid var(--accent-color); }
+        .checkbox-wrapper input:checked + div { background-color: var(--accent-color); border-color: var(--accent-color); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 3px; }
+        @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        #ui-wrapper { transition: transform 1s ease-in-out; }
+        .backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md { backdrop-filter: none !important; }
+        iframe { contain: strict; }
+        @media (prefers-reduced-motion: reduce) {
+            .carousel-item, .v-carousel-track, #bg-layer, #ui-wrapper { transition-duration: 0.2s !important; }
+            .pos-center .detail-view { animation: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="bg-layer"></div>
+    <div id="bg-overlay"></div>
+
+    <!-- SETTINGS BUTTON -->
+    <button onclick="openSettings()" class="fixed bottom-4 right-4 z-50 text-white/20 hover:text-white transition-colors p-2 text-xl bg-black/50 rounded-full h-12 w-12 flex items-center justify-center backdrop-blur-sm">
+        <i class="fa-solid fa-gear"></i>
+    </button>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center backdrop-blur-md p-4">
+        <div class="themed-modal rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <h2 class="text-2xl font-bold mb-6 text-accent flex items-center">
+                <i class="fa-solid fa-sliders mr-3"></i> Dashboard Settings
+            </h2>
+            
+            <!-- Cycle Timers -->
+            <div class="mb-6">
+                <h3 class="text-sm uppercase text-gray-500 font-bold tracking-wider mb-3 border-b border-gray-800 pb-1">Cycle Speeds</h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div><label class="block text-[10px] text-gray-500 mb-1">Header (Sec)</label><input id="set-header-speed" type="number" min="5" value="30" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs"></div>
+                    <div><label class="block text-[10px] text-gray-500 mb-1">Panel Rotation (Sec)</label><input id="set-panel-speed" type="number" min="5" value="15" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs"></div>
+                    <div><label class="block text-[10px] text-gray-500 mb-1">Wallpaper (Sec)</label><input id="set-bg-speed" type="number" min="10" value="60" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs"></div>
+                </div>
+            </div>
+
+            <!-- Weather Location -->
+            <div class="mb-6">
+                <h3 class="text-sm uppercase text-gray-500 font-bold tracking-wider mb-3 border-b border-gray-800 pb-1">Weather Location</h3>
+                <div class="flex gap-2">
+                    <input id="set-location-input" type="text" placeholder="Enter City Name" class="flex-1 bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                    <button onclick="lookupLocation()" class="bg-blue-600 px-4 rounded text-white text-xs font-bold hover:bg-blue-500 transition-colors">Find</button>
+                </div>
+                <p id="location-status" class="text-[10px] text-gray-500 mt-2 pl-1 italic">Current: Default</p>
+            </div>
+
+            <!-- Calendar -->
+            <div class="mb-6">
+                <h3 class="text-sm uppercase text-gray-500 font-bold tracking-wider mb-3 border-b border-gray-800 pb-1">Calendar Integration</h3>
+                <input id="set-calendar-url" type="text" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="Google Calendar Embed URL">
+            </div>
+
+            <!-- Countdown -->
+            <div class="mb-6">
+                <h3 class="text-sm uppercase text-gray-500 font-bold tracking-wider mb-3 border-b border-gray-800 pb-1">Countdown Events</h3>
+                <div class="space-y-3" id="event-inputs">
+                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-[10px] text-gray-500 mb-1">Event 1</label><input id="set-event-name-0" type="text" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"></div><div><label class="block text-[10px] text-gray-500 mb-1">Date</label><input id="set-event-date-0" type="date" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"></div></div>
+                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-[10px] text-gray-500 mb-1">Event 2</label><input id="set-event-name-1" type="text" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"></div><div><label class="block text-[10px] text-gray-500 mb-1">Date</label><input id="set-event-date-1" type="date" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"></div></div>
+                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-[10px] text-gray-500 mb-1">Event 3</label><input id="set-event-name-2" type="text" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"></div><div><label class="block text-[10px] text-gray-500 mb-1">Date</label><input id="set-event-date-2" type="date" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-sm"></div></div>
+                </div>
+            </div>
+
+            <!-- Appearance -->
+            <div class="mb-8 border-t border-gray-800 pt-6">
+                <h3 class="text-sm uppercase text-gray-500 font-bold tracking-wider mb-3">Appearance</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Visual Theme</label>
+                        <select id="set-theme" onchange="applyTheme(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+                            <option value="midnight">Midnight (Blue)</option>
+                            <option value="sage">Sage (Green)</option>
+                            <option value="berry">Berry (Purple)</option>
+                            <option value="cocoa">Cocoa (Warm)</option>
+                            <option value="slate">Slate (Gray)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Background Style</label>
+                        <select id="set-bg-genre" onchange="previewBackground(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
+                            <option value="nature">Nature</option>
+                            <option value="city">City</option>
+                            <option value="cars">Cars</option>
+                            <option value="art">Art</option>
+                            <option value="space">Space</option>
+                            <option value="animals">Animals</option>
+                            <option value="ocean">Ocean & Beach</option>
+                            <option value="minimalist">Minimalist</option>
+                            <option value="mountains">Mountains</option>
+                            <option value="cyberpunk">Cyberpunk / Neon</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-800 sticky bottom-0 bg-gray-900/95 backdrop-blur">
+                <button onclick="closeSettings()" class="px-4 py-2 rounded text-gray-400 hover:text-white hover:bg-gray-800">Cancel</button>
+                <button onclick="saveSettings()" class="px-6 py-2 rounded bg-blue-600 hover:bg-blue-500 text-white font-bold shadow-lg">Save & Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN UI WRAPPER -->
+    <div id="ui-wrapper" class="h-screen w-screen p-8 flex flex-col gap-12 box-border">
+
+        <!-- HEADER -->
+        <div class="flex justify-between items-end pb-2 shrink-0 h-32">
+            <div class="v-carousel-container w-1/2 drop-shadow-2xl">
+                <div id="header-left-track" class="v-carousel-track">
+                    <div class="v-slide v-align-left"> 
+                        <div class="clock-time text-7xl font-bold tracking-tighter text-white leading-none heavy-shadow">00:00</div>
+                        <div class="clock-date text-2xl text-gray-200 mt-2 font-light heavy-shadow">Loading...</div>
+                    </div>
+                    <div class="v-slide v-align-left">
+                        <div class="clock-date text-4xl font-bold text-accent leading-tight heavy-shadow">Loading...</div>
+                        <div class="clock-time text-xl text-gray-400 mt-1 font-mono tracking-widest heavy-shadow">00:00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="v-carousel-container w-1/2 drop-shadow-2xl">
+                <div id="header-right-track" class="v-carousel-track">
+                    <div class="v-slide v-align-right">
+                         <div id="greeting" class="text-4xl text-accent font-medium tracking-tight heavy-shadow">Good Morning</div>
+                    </div>
+                    <div class="v-slide v-align-right">
+                         <div id="quote-text" class="text-lg italic text-white font-serif leading-snug text-right line-clamp-2 pl-4 heavy-shadow">"Loading..."</div>
+                         <div id="quote-author" class="text-xs text-accent font-bold uppercase mt-1 heavy-shadow">- Author</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN CAROUSEL -->
+        <div id="main-carousel" class="carousel-container flex-1">
+            
+            <!-- WEATHER -->
+            <div id="panel-weather" class="carousel-item">
+                <div class="inner-frame">
+                    <div class="flex-1 flex flex-col justify-between items-center text-center pt-2 h-full">
+                        <div class="flex flex-col items-center">
+                             <div id="weather-location" class="text-xs text-gray-400 uppercase tracking-widest mb-2 font-bold opacity-80">Loading Location...</div>
+                             <div id="weather-main-icon" class="text-6xl text-secondary mb-2 drop-shadow-lg scale-110"><i class="fa-solid fa-sun"></i></div>
+                             <div id="temp" class="main-text font-bold mb-1 leading-none drop-shadow-md text-6xl">--°</div>
+                             <div id="condition" class="text-2xl text-gray-200 font-medium">Loading...</div>
+                             <div id="high-low" class="text-sm text-gray-400 mt-1">H: --° L: --°</div>
+                        </div>
+
+                        <div class="detail-view w-full flex-1 flex flex-col justify-end mt-4">
+                            <div class="grid grid-cols-2 gap-4 w-full px-4 mb-4 shrink-0">
+                                <div class="flex flex-col items-center bg-gray-900/60 rounded-xl p-3 border border-white/5 shadow-sm">
+                                    <i class="fa-solid fa-wind text-gray-400 mb-1 text-sm"></i>
+                                    <span id="wind-speed" class="text-lg font-bold">--</span>
+                                    <span class="text-[10px] text-gray-500 uppercase tracking-wide">Wind km/h</span>
+                                </div>
+                                <div class="flex flex-col items-center bg-gray-900/60 rounded-xl p-3 border border-white/5 shadow-sm">
+                                    <i class="fa-solid fa-droplet text-accent mb-1 text-sm"></i>
+                                    <span id="precip-prob" class="text-lg font-bold">--%</span>
+                                    <span class="text-[10px] text-gray-500 uppercase tracking-wide">Rain Prob.</span>
+                                </div>
+                            </div>
+                            
+                            <div class="w-full mb-3 shrink-0">
+                                <div class="bg-gray-900/40 rounded-xl p-3 backdrop-blur-sm border border-white/5">
+                                    <div class="text-[10px] text-gray-500 text-left mb-2 uppercase font-bold tracking-widest pl-1">Today's Forecast</div>
+                                    <div id="hourly-forecast" class="grid grid-cols-4 gap-2"></div>
+                                </div>
+                            </div>
+
+                            <div class="w-full flex-1 overflow-hidden">
+                                 <div class="bg-gray-900/40 rounded-xl p-3 backdrop-blur-sm border border-white/5 h-full">
+                                    <div class="text-[10px] text-gray-500 text-left mb-2 uppercase font-bold tracking-widest pl-1">Next 5 Days</div>
+                                    <div id="weekly-forecast" class="space-y-2"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALENDAR -->
+            <div id="panel-calendar" class="carousel-item">
+                <div class="inner-frame !p-0">
+                     <iframe 
+                        id="calendar-iframe"
+                        src="https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&mode=AGENDA&showTitle=0&showNav=0&showDate=1&showPrint=0&showTabs=0&showCalendars=0&src=viviersdrakecalendar%40gmail.com&ctz=Pacific%2FAuckland&color=%230B8043" 
+                        style="border:0; width:100%; height:100%; filter: invert(1) hue-rotate(180deg) saturate(0.5) contrast(1.2);" 
+                        frameborder="0" scrolling="no">
+                    </iframe>
+                    <div class="absolute inset-0 bg-blue-900 mix-blend-overlay pointer-events-none opacity-20"></div>
+                </div>
+            </div>
+
+            <!-- WINDY MAP -->
+            <div id="panel-windy" class="carousel-item">
+                <div class="inner-frame !p-0 bg-gray-900">
+                     <iframe 
+                        id="windy-iframe"
+                        src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=°C&metricWind=km/h&zoom=10&overlay=wind&product=ecmwf&level=surface&lat=-40.338&lon=175.480" 
+                        style="border:0; width:100%; height:100%;" 
+                        frameborder="0" scrolling="no">
+                    </iframe>
+                </div>
+            </div>
+
+            <!-- COUNTDOWN -->
+            <div id="panel-countdown" class="carousel-item">
+                <div class="inner-frame">
+                    <div class="flex-1 flex flex-col justify-start items-center text-center relative w-full h-full">
+                        <div class="text-xl text-gray-400 mb-4 uppercase tracking-widest shrink-0"><i class="fa-solid fa-hourglass-half mr-2"></i> Countdown</div>
+                        <div id="countdown-wrapper" class="w-full flex-1 flex flex-col justify-center space-y-6"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WORD -->
+            <div id="panel-word" class="carousel-item">
+                <div class="inner-frame">
+                    <div class="flex-1 flex flex-col justify-center items-center text-center">
+                        <div id="word-word" class="main-text font-serif font-bold text-accent mb-2">Word</div>
+                        <div id="word-type" class="text-lg italic text-gray-500 font-serif mb-6">(n.)</div>
+                        <div class="detail-view max-w-sm mx-auto">
+                            <div id="word-def" class="text-2xl text-gray-200 leading-relaxed font-light">Definition...</div>
+                            <div class="mt-8 border-t border-white/10 pt-4">
+                                <div id="word-example" class="text-lg text-gray-400 italic">"Example..."</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FACT -->
+            <div id="panel-fact" class="carousel-item">
+                <div class="inner-frame">
+                    <div class="flex-1 flex flex-col justify-center items-center text-center p-6">
+                        <div class="text-sm text-gray-400 uppercase tracking-widest mb-8"><i class="fa-solid fa-lightbulb mr-2 text-xl"></i>Did You Know?</div>
+                        <div id="fact-text" class="text-3xl sm:text-4xl md:text-5xl font-serif text-white leading-relaxed max-w-lg mx-auto">Loading...</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Editable facts and quotes; keep this file beside the HTML page. -->
+    <script src="./content-config.js"></script>
+    <script>
+        const THEMES = {
+            midnight: { bg: "rgba(17, 24, 39, 0.85)", accent: "#93c5fd", secondary: "#facc15" }, 
+            sage:     { bg: "rgba(20, 30, 25, 0.85)", accent: "#86efac", secondary: "#fde047" }, 
+            berry:    { bg: "rgba(30, 20, 35, 0.85)", accent: "#e879f9", secondary: "#f472b6" }, 
+            cocoa:    { bg: "rgba(40, 35, 30, 0.85)", accent: "#fdba74", secondary: "#fcd34d" }, 
+            slate:    { bg: "rgba(30, 33, 40, 0.85)", accent: "#e2e8f0", secondary: "#94a3b8" }  
+        };
+
+        const WALLPAPERS = {
+            nature: [
+                "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1501854140884-074bf86ee924?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1439853949127-fa647821eba0?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1504608524841-42fe6f032b4b?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            city: [
+                "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1449824913929-4bdd42b98d04?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1485871981535-5b15f5724338?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1519681393798-38e43269d877?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1534430480872-3498386e7856?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1496442226666-8d4a0e94f389?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            cars: [
+                "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1503376763036-066120622c74?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1583121274602-3e2820c69888?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1590247813693-5541d1c609fd?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1550355291-bbee04a92027?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1511919884226-fd3cad34687c?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            art: [
+                "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1569982175971-d92b01cf8694?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1604871000636-074fa5117945?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1563089145-599997674d42?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1550136513-548af4445338?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1549490349-8643362247b5?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1515405295579-ba7b45403062?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            space: [
+                "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1543722530-d2c3201371e7?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1462332420958-a05d1e002413?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1464802686167-b939a6910659?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1534849450954-41b917717727?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1444703686981-a3abbc4d4fe3?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1538370965046-79c0d6907d47?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1614730341194-75c60740a2d3?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1484589065579-248aad0d8b13?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            animals: [
+                "https://images.unsplash.com/photo-1546182990-79d50ed96f2a?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1517825738774-7de1c0ca5e60?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1474511320723-9a56873864b5?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1564349683130-112cb92fb138?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1518020382113-a5e8fcb0e4cb?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1555169062-0eb23fdc229c?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1501705388883-4ed8a543392c?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1543946602-9bc95e791b8d?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1550231862-23c28a7e0c4f?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1560062402-9989f6d7ab7a?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            ocean: [
+                "https://images.unsplash.com/photo-1439405326854-014607f694d7?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1498623116890-37e912163d5d?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1468581264429-2548ef9eb732?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1505118380757-91f5f5632cb0?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1500930287596-c1ecbee37424?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1520942702018-0862200e6873?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            minimalist: [
+                "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1507608616759-54f48f0af0ee?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1481277542470-605612bd2d61?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1449247709967-d4461a6a6103?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1434494878577-86c23bcb06b9?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1500462918059-b1a0cb512f1d?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1534135548658-00d9841f3e9c?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1501696461415-6bd6660c6742?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1516214104703-d25079018369?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            mountains: [
+                "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1483728642387-6c3ba6c6b870?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1519681393798-38e43269d877?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1454372182658-c712e4c5a1db?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1469334031218-e382a71b716b?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1483728642387-6c3ba6c6b870?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1486911278844-a81c5267e227?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ],
+            cyberpunk: [
+                "https://images.unsplash.com/photo-1555680202-c86f0e12f086?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1515462277126-2dd0c162007a?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1510312305653-8ed496efae77?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1554629947-334ff61d85dc?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1601042879364-f3947d3f9c16?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1519608487953-e999c86e7455?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1533929736458-ca588d08c8be?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1502899576159-f224dc2349fa?auto=format&fit=crop&w=1080&h=1920&q=80",
+                "https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&w=1080&h=1920&q=80"
+            ]
+        };
+
+        let CONFIG = {
+            lat: -40.3523, 
+            long: 175.6082,
+            locationName: "Palmerston North", 
+            calendarUrl: "https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&mode=AGENDA&showTitle=0&showNav=0&showDate=1&showPrint=0&showTabs=0&showCalendars=0&src=viviersdrakecalendar%40gmail.com&ctz=Pacific%2FAuckland&color=%230B8043",
+            headerRotateInterval: 30000,
+            panelRotateInterval: 15000,
+            wallpaperInterval: 60000, 
+            theme: "midnight",
+            bgGenre: "nature",
+            events: [ { name: "Christmas", date: "2025-12-25" } ]
+        };
+        
+        // --- THEME & BG LOGIC ---
+        function applyTheme(themeName) {
+            const theme = THEMES[themeName] || THEMES.midnight;
+            const root = document.documentElement;
+            root.style.setProperty('--panel-bg', theme.bg);
+            root.style.setProperty('--accent-color', theme.accent);
+            root.style.setProperty('--accent-secondary', theme.secondary);
+        }
+
+        function previewBackground(genre) {
+            const list = WALLPAPERS[genre] || WALLPAPERS.nature;
+            const url = list[Math.floor(Math.random() * list.length)]
+                .replace('w=1080&h=1920&q=80', 'w=900&h=1600&q=65');
+            const bg = document.getElementById('bg-layer');
+            bg.style.backgroundImage = `url('${url}')`;
+        }
+
+        function updateCalendar() {
+            const iframe = document.getElementById('calendar-iframe');
+            if (iframe && CONFIG.calendarUrl) {
+                iframe.src = CONFIG.calendarUrl;
+            }
+        }
+
+        // --- SETTINGS LOGIC ---
+        async function lookupLocation() {
+            const query = document.getElementById('set-location-input').value;
+            const status = document.getElementById('location-status');
+            if (!query) return;
+            
+            status.textContent = "Searching...";
+            
+            try {
+                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
+                const data = await res.json();
+                
+                if(data.results && data.results.length > 0) {
+                    const loc = data.results[0];
+                    const input = document.getElementById('set-location-input');
+                    input.dataset.lat = loc.latitude;
+                    input.dataset.long = loc.longitude;
+                    input.dataset.name = loc.name; 
+                    
+                    status.textContent = `Found: ${loc.name}, ${loc.country || ''} (${loc.latitude.toFixed(2)}, ${loc.longitude.toFixed(2)})`;
+                    status.className = "text-[10px] text-green-400 mt-2 pl-1 font-bold";
+                } else {
+                    status.textContent = "Location not found.";
+                    status.className = "text-[10px] text-red-400 mt-2 pl-1 font-bold";
+                }
+            } catch(e) {
+                status.textContent = "Error searching location.";
+                status.className = "text-[10px] text-red-400 mt-2 pl-1";
+            }
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('dash_config');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if(parsed.eventName && !parsed.events) parsed.events = [{ name: parsed.eventName, date: parsed.eventDate }];
+                    
+                    CONFIG.panelRotateInterval = parsed.panelRotateInterval || parsed.topRotateInterval || 15000;
+                    CONFIG.headerRotateInterval = parsed.headerRotateInterval || 30000;
+                    CONFIG.lat = parsed.lat || CONFIG.lat;
+                    CONFIG.long = parsed.long || CONFIG.long;
+                    CONFIG.locationName = parsed.locationName || CONFIG.locationName;
+                    CONFIG.calendarUrl = parsed.calendarUrl || CONFIG.calendarUrl;
+                    CONFIG.wallpaperInterval = parsed.wallpaperInterval || CONFIG.wallpaperInterval;
+                    CONFIG.theme = parsed.theme || CONFIG.theme;
+                    CONFIG.bgGenre = parsed.bgGenre || CONFIG.bgGenre;
+                    CONFIG.events = parsed.events || CONFIG.events;
+                } catch(e) { console.error("Config parse error"); }
+            }
+            applyTheme(CONFIG.theme || 'midnight');
+            updateCalendar(); 
+        }
+
+        function openSettings() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+            document.getElementById('set-theme').value = CONFIG.theme || 'midnight';
+            document.getElementById('set-bg-genre').value = CONFIG.bgGenre || 'nature';
+            document.getElementById('set-calendar-url').value = CONFIG.calendarUrl || '';
+            document.getElementById('location-status').textContent = `Current: ${CONFIG.locationName || 'Palmerston North'} (${CONFIG.lat.toFixed(2)}, ${CONFIG.long.toFixed(2)})`;
+            document.getElementById('location-status').className = "text-[10px] text-gray-500 mt-2 pl-1 italic";
+            document.getElementById('set-header-speed').value = (CONFIG.headerRotateInterval || 30000) / 1000;
+            document.getElementById('set-panel-speed').value = (CONFIG.panelRotateInterval || 15000) / 1000;
+            document.getElementById('set-bg-speed').value = (CONFIG.wallpaperInterval || 60000) / 1000;
+
+            const today = new Date().toISOString().split('T')[0];
+            for(let i=0; i<3; i++) {
+                const evt = CONFIG.events[i] || { name: "", date: "" };
+                const nameInput = document.getElementById(`set-event-name-${i}`);
+                if (nameInput) nameInput.value = evt.name;
+                const dateInput = document.getElementById(`set-event-date-${i}`);
+                if (dateInput) dateInput.value = evt.date || today;
+            }
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-modal').classList.add('hidden');
+            loadSettings(); 
+        }
+
+        function saveSettings() {
+            CONFIG.theme = document.getElementById('set-theme').value;
+            CONFIG.bgGenre = document.getElementById('set-bg-genre').value;
+            
+            const headerSpeed = parseInt(document.getElementById('set-header-speed').value) || 30;
+            const panelSpeed = parseInt(document.getElementById('set-panel-speed').value) || 15;
+            const bgSpeed = parseInt(document.getElementById('set-bg-speed').value) || 60;
+            
+            CONFIG.headerRotateInterval = headerSpeed * 1000;
+            CONFIG.panelRotateInterval = panelSpeed * 1000;
+            CONFIG.wallpaperInterval = bgSpeed * 1000; 
+
+            const locInput = document.getElementById('set-location-input');
+            if (locInput.dataset.lat) {
+                CONFIG.lat = parseFloat(locInput.dataset.lat);
+                CONFIG.long = parseFloat(locInput.dataset.long);
+                CONFIG.locationName = locInput.dataset.name;
+            }
+
+            let calUrl = document.getElementById('set-calendar-url').value;
+            if (calUrl) {
+                if (calUrl.match(/mode=[A-Z]+/)) {
+                    calUrl = calUrl.replace(/mode=[A-Z]+/, 'mode=AGENDA');
+                } else if (calUrl.includes('?')) {
+                    calUrl += '&mode=AGENDA';
+                } else {
+                    calUrl += '?mode=AGENDA';
+                }
+                CONFIG.calendarUrl = calUrl;
+            }
+            
+            applyTheme(CONFIG.theme);
+            updateBackground(true);
+            updateCalendar();
+
+            const newEvents = [];
+            for(let i=0; i<3; i++) {
+                const name = document.getElementById(`set-event-name-${i}`).value;
+                const date = document.getElementById(`set-event-date-${i}`).value;
+                if(name && date) newEvents.push({ name, date });
+            }
+            CONFIG.events = newEvents;
+
+            localStorage.setItem('dash_config', JSON.stringify(CONFIG));
+            
+            updateCountdown();
+            fetchWeather();
+            restartTimers(); 
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+        
+        function updateQuote() {
+            const quotes = window.DASH_CONTENT?.quotes || [];
+            if (!quotes.length) return;
+            const q = quotes[Math.floor(Math.random() * quotes.length)];
+            document.getElementById('quote-text').textContent = `"${q.text}"`;
+            document.getElementById('quote-author').textContent = `— ${q.author}`;
+        }
+        
+        function updateFact() {
+            const facts = window.DASH_CONTENT?.facts || [];
+            if (!facts.length) return;
+            const fact = facts[Math.floor(Math.random() * facts.length)];
+            document.getElementById('fact-text').textContent = fact;
+        }
+
+        function updateCountdown() {
+            const wrapper = document.getElementById('countdown-wrapper');
+            wrapper.innerHTML = '';
+            if (!CONFIG.events || CONFIG.events.length === 0) {
+                wrapper.innerHTML = '<div class="text-gray-500">No events set</div>';
+                return;
+            }
+            const count = CONFIG.events.length;
+            if (count === 1) wrapper.className = "w-full flex-1 flex flex-col justify-center items-center";
+            else wrapper.className = "w-full flex-1 flex flex-col justify-center px-2"; 
+
+            CONFIG.events.forEach((evt, idx) => {
+                const target = new Date(evt.date);
+                const now = new Date();
+                const diff = target - now;
+                const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                const displayDays = days > 0 ? days : "0";
+                const div = document.createElement('div');
+                if (count === 1) {
+                    const progress = Math.max(0, Math.min(100, 100 - days));
+                    div.className = "w-full flex flex-col items-center";
+                    div.innerHTML = `<div class="main-text font-bold text-secondary leading-none">${displayDays}</div><div class="text-2xl text-gray-300 mt-2">Days Until</div><div class="text-3xl text-accent font-bold mt-2 uppercase tracking-wide px-4 line-clamp-2">${evt.name}</div><div class="w-full mt-8 px-6"><div class="w-full bg-gray-700 rounded-full h-3 mb-2"><div class="bg-accent-dim h-3 rounded-full" style="background:var(--accent-secondary); width: ${progress}%"></div></div></div>`;
+                } else {
+                    const py = count === 2 ? 'py-8' : 'py-5';
+                    const titleSize = count === 2 ? 'text-2xl' : 'text-xl';
+                    const numSize = count === 2 ? 'text-5xl' : 'text-4xl';
+                    div.className = `flex items-center justify-between ${py} border-b border-white/10 last:border-0`;
+                    div.innerHTML = `<div class="text-left flex-1 pr-4"><div class="${titleSize} text-accent font-bold leading-tight line-clamp-1">${evt.name}</div><div class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Target: ${evt.date}</div></div><div class="text-right"><span class="${numSize} font-bold text-secondary leading-none drop-shadow-sm">${displayDays}</span><span class="text-[10px] text-gray-400 block text-center uppercase tracking-wider">Days</span></div>`;
+                }
+                wrapper.appendChild(div);
+            });
+        }
+
+        function updateWord() {
+            const vocabulary = window.DASH_CONTENT?.vocabulary || [];
+            if (!vocabulary.length) return;
+            const wordObj = vocabulary[Math.floor(Math.random() * vocabulary.length)];
+            document.getElementById('word-word').textContent = wordObj.word;
+            document.getElementById('word-type').textContent = `(${wordObj.type}.)`;
+            document.getElementById('word-def').textContent = wordObj.def;
+            document.getElementById('word-example').textContent = `"${wordObj.ex}"`;
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = String(now.getHours()).padStart(2,'0') + ":" + String(now.getMinutes()).padStart(2,'0');
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            document.querySelectorAll('.clock-time').forEach(el => el.textContent = timeStr);
+            document.querySelectorAll('.clock-date').forEach(el => el.textContent = dateStr);
+            const h = now.getHours();
+            document.getElementById('greeting').textContent = h < 12 ? "Good Morning" : (h < 18 ? "Good Afternoon" : "Good Evening");
+            if(now.getSeconds() === 0 && now.getMinutes() === 0) { updateCountdown(); }
+        }
+
+        let headerState = 0;
+        function rotateHeader() {
+            const trackLeft = document.getElementById('header-left-track');
+            const trackRight = document.getElementById('header-right-track');
+            headerState = headerState === 0 ? 1 : 0;
+            const translateVal = headerState * 7; 
+            trackLeft.style.transform = `translateY(-${translateVal}rem)`;
+            trackRight.style.transform = `translateY(-${translateVal}rem)`;
+            if(headerState === 1) {
+                updateQuote(); 
+            }
+        }
+
+        function updateBackground(forceUpdate = false) {
+            const bg = document.getElementById('bg-layer');
+            const genre = CONFIG.bgGenre || 'nature';
+            const list = WALLPAPERS[genre] || WALLPAPERS.nature;
+            const url = list[Math.floor(Math.random() * list.length)];
+            const img = new Image();
+            img.src = url;
+            img.onload = () => {
+                bg.style.opacity = 0;
+                setTimeout(() => { bg.style.backgroundImage = `url('${url}')`; bg.style.opacity = 0.85; }, 1000);
+            };
+        }
+
+        function getWeatherIcon(code) {
+             if (code <= 1) return '<i class="fa-solid fa-sun"></i>';
+             if (code <= 3) return '<i class="fa-solid fa-cloud"></i>';
+             if (code <= 48) return '<i class="fa-solid fa-smog"></i>';
+             if (code <= 67) return '<i class="fa-solid fa-cloud-rain"></i>';
+             if (code <= 77) return '<i class="fa-regular fa-snowflake"></i>';
+             if (code <= 82) return '<i class="fa-solid fa-cloud-showers-heavy"></i>';
+             if (code <= 99) return '<i class="fa-solid fa-bolt"></i>';
+             return '<i class="fa-solid fa-cloud"></i>';
+        }
+
+        async function fetchWeather() {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${CONFIG.lat}&longitude=${CONFIG.long}&current_weather=true&hourly=temperature_2m,weathercode,precipitation_probability,windspeed_10m&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+                const data = await res.json();
+                
+                const current = data.current_weather;
+                const hourly = data.hourly;
+                const daily = data.daily;
+                
+                document.getElementById('temp').textContent = Math.round(current.temperature) + "°";
+                document.getElementById('weather-main-icon').innerHTML = getWeatherIcon(current.weathercode);
+                document.getElementById('weather-location').textContent = CONFIG.locationName; 
+                
+                const codes = { 0:"Clear Sky", 1:"Mainly Clear", 2:"Partly Cloudy", 3:"Overcast", 45:"Fog", 51:"Drizzle", 61:"Rain", 95:"Storm" };
+                document.getElementById('condition').textContent = codes[current.weathercode] || "Unknown";
+                document.getElementById('high-low').textContent = `H: ${Math.round(data.daily.temperature_2m_max[0])}°  L: ${Math.round(data.daily.temperature_2m_min[0])}°`;
+
+                const currentHourISO = new Date().toISOString().slice(0, 13);
+                let currentHourIndex = hourly.time.findIndex(t => t.startsWith(currentHourISO));
+                if (currentHourIndex === -1) currentHourIndex = 0;
+
+                document.getElementById('wind-speed').textContent = current.windspeed;
+                document.getElementById('precip-prob').textContent = (hourly.precipitation_probability[currentHourIndex] || 0) + "%";
+
+                const forecastStrip = document.getElementById('hourly-forecast');
+                forecastStrip.innerHTML = '';
+                
+                for (let i = 1; i <= 4; i++) {
+                    const idx = currentHourIndex + (i * 3);
+                    if (idx < hourly.time.length) {
+                        const timeStr = hourly.time[idx];
+                        const dateObj = new Date(timeStr);
+                        const hours = dateObj.getHours();
+                        const ampm = hours >= 12 ? 'pm' : 'am';
+                        const hour12 = hours % 12 || 12;
+                        
+                        const temp = Math.round(hourly.temperature_2m[idx]);
+                        const icon = getWeatherIcon(hourly.weathercode[idx]);
+                        const precip = hourly.precipitation_probability[idx];
+
+                        const div = document.createElement('div');
+                        div.className = "flex flex-col items-center justify-center p-1 rounded hover:bg-white/5 transition-colors";
+                        div.innerHTML = `
+                            <span class="text-[10px] text-gray-400 font-bold">${hour12}${ampm}</span>
+                            <span class="text-lg my-0 text-gray-200">${icon}</span>
+                            <span class="text-xs font-bold">${temp}°</span>
+                            <span class="text-[9px] text-blue-400">${precip}%</span>
+                        `;
+                        forecastStrip.appendChild(div);
+                    }
+                }
+
+                const weeklyList = document.getElementById('weekly-forecast');
+                weeklyList.innerHTML = '';
+                
+                for(let i=1; i<=5; i++) {
+                    const date = new Date(daily.time[i]);
+                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                    const max = Math.round(daily.temperature_2m_max[i]);
+                    const min = Math.round(daily.temperature_2m_min[i]);
+                    const code = daily.weathercode[i];
+                    const icon = getWeatherIcon(code);
+                    
+                    const row = document.createElement('div');
+                    row.className = "flex justify-between items-center text-xs border-b border-white/5 pb-1 last:border-0";
+                    row.innerHTML = `
+                        <div class="w-8 font-bold text-gray-400">${dayName}</div>
+                        <div class="flex-1 text-center text-gray-300">${icon}</div>
+                        <div class="w-16 text-right"><span class="text-white font-medium">${max}°</span> <span class="text-gray-500 ml-1">${min}°</span></div>
+                    `;
+                    weeklyList.appendChild(row);
+                }
+
+            } catch(e) { console.error(e); }
+        }
+
+        function protectBurnIn() {
+            const x = Math.floor(Math.random() * 20) - 10;
+            const y = Math.floor(Math.random() * 20) - 10;
+            document.getElementById('ui-wrapper').style.transform = `translate(${x}px, ${y}px)`;
+        }
+
+        const panelIds = ['panel-weather', 'panel-calendar', 'panel-windy', 'panel-countdown', 'panel-word', 'panel-fact'];
+        let currentIndex = 0;
+
+        function updateCarousel(ids, currentIdx) {
+            const total = ids.length;
+            const leftIndex = (currentIdx - 1 + total) % total;
+            const rightIndex = (currentIdx + 1) % total;
+            ids.forEach((id, index) => {
+                const el = document.getElementById(id);
+                el.className = 'carousel-item'; 
+                if (index === currentIdx) el.classList.add('pos-center');
+                else if (index === leftIndex) el.classList.add('pos-left');
+                else if (index === rightIndex) el.classList.add('pos-right');
+                else el.classList.add('pos-hidden'); 
+
+                // Live embedded pages are costly to paint on a Raspberry Pi.
+                // Keep them loaded, but paint only the active centre panel.
+                const frame = el.querySelector('iframe');
+                if (frame) frame.style.visibility = index === currentIdx ? 'visible' : 'hidden';
+            });
+        }
+
+        function rotatePanels() { 
+            currentIndex = (currentIndex + 1) % panelIds.length; 
+            updateCarousel(panelIds, currentIndex); 
+        }
+
+        let panelInterval, wallpaperInterval, wordInterval, headerInterval;
+        function restartTimers() {
+            if(panelInterval) clearInterval(panelInterval);
+            if(wallpaperInterval) clearInterval(wallpaperInterval);
+            if(wordInterval) clearInterval(wordInterval);
+            if(headerInterval) clearInterval(headerInterval);
+            
+            panelInterval = setInterval(rotatePanels, CONFIG.panelRotateInterval);
+            wallpaperInterval = setInterval(updateBackground, CONFIG.wallpaperInterval);
+            wordInterval = setInterval(() => { updateWord(); updateFact(); }, 600000); // 10 minutes
+            headerInterval = setInterval(rotateHeader, CONFIG.headerRotateInterval);
+        }
+
+        loadSettings(); 
+        updateCountdown(); 
+        updateWord(); 
+        updateQuote(); 
+        updateFact(); 
+        fetchWeather(); 
+        updateClock(); 
+        updateBackground(true);
+        
+        // Only hours and minutes are displayed, so a per-second repaint is wasteful.
+        setInterval(updateClock, 60000);
+        setInterval(protectBurnIn, 60000);
+        setInterval(fetchWeather, 3600000);
+        
+        restartTimers(); 
+        updateCarousel(panelIds, currentIndex);
+    </script>
+</body>
+</html>
